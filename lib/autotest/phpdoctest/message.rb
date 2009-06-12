@@ -1,44 +1,48 @@
 module Autotest::Phpdoctest
   module Message
-    def has_no_error?(o)
+    def has_passed?(o)
+      # doctest says 'fine' with errors, so watch errors
       o.match(Regexp.union(
-        /Parse error: syntax error, ([^\n]+)\n/
+        /Parse error: syntax error, ([^\n]+)\n/,
+        /Failed test/
       )) ? false : true
     end
     
-    def summarize(expect)
-      # case expect.to_sym
-      # when :pass summarize_pass(msg)
-      # when :fail
-      # end
-    end
-    
-    def filter_passmsg(o)
-      res = ['Pass:']
-      
-      if o.match(/TOTAL.*COVERAGE([^\n]+)/mu)
-        res << $~.to_s
+    def summarize(result, output)
+      o = output.split("\n")
+      res = case result.to_sym
+        when :fail then filter_fail(o)
+        when :pass then filter_pass(o)
+        else ["nothing to summarize for #{result}"]
       end
-      
-      n = o.split('file:').size - 1
-      res << "tested: #{n < 0 ? 0:n} files"
-      
-      res.join("\n")
+      res.flatten.join "\n"
     end
     
-    def filter_failmsg(o)
-      res = ['Fail:']
-      
-      # parse syntax error msg
-      o.split("\n").each { |line| 
+    def filter_pass(o)
+      cov, num = '', 0
+      o.each do |line|
+        cov = $~.to_s if line.match(/TOTAL.*COVERAGE([^\n]+)/)
+        num += 1 if line.match(/\#\s+file:\s*/)
+      end
+      ['Pass:', cov, "tested #{num} files"]
+    end
+    
+    def filter_fail(o)
+      report = []
+      o.each do |line|
+        # syntax error
         if line.match(/Parse error: syntax error, (.+) in (.+) on line ([0-9]+)/)
           _msg, _path, _line = $~.captures
           _path = _path.match(/\/(apps\/.+)/) ? $~.captures.to_s : _path
-          res << "syntax err: #{_msg} @#{_path}:#{_line}"
+          report << "syntax err: #{_msg} @#{_path}:#{_line}"
         end
-      }
-      
-      res.join("\n")
+        # not message
+        report << $~.to_s if line.match(/^\s*not.*$/)
+        # file path
+        # Failed test (./cache/frontend/test/sfDocTestPlugin/tests/lib/model/Book.php at line 27)
+        report << "#{$1} line:#{$2}" if line.match(%r%Failed test.*\(.*sfDocTestPlugin/tests/([^\s]+) at line ([0-9]+)\)%)
+      end
+      ['Fail:', report]
     end
   end
 end

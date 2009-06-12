@@ -5,8 +5,8 @@ describe "autotest notification" do
     @runner ||= RunnerTestClass.new
   end
 
-  def mocked_at
-    mock(Autotest, :results => result_of(:pass))
+  def autotest
+    @autotest ||= mock(Autotest)
   end
   
   def klass
@@ -14,13 +14,13 @@ describe "autotest notification" do
   end
   
   it "should turn on growl notification" do
-    # runner.class.should respond_to
     klass.should respond_to(:turn_on)
   end
   
-  it "should hook ran-event and run growl" do
-    # klass.should respond_to(:run_growl_proc)
-    # proc = klass.run_growl_proc
-    # proc.call(mocked_at)
+  it "should run growl" do
+    klass.should respond_to(:run_growl_proc)
+    proc = klass.run_growl_proc
+    autotest.should_receive(:results).and_return result_of(:pass)
+    proc.call autotest
   end
 end

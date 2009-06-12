@@ -16,13 +16,13 @@ class Autotest::Phpdoctest::GrowlNotify
     
     def run_growl_proc
       lambda do |at|
-        # at.class is Autotest::YourStyle
+        # # at.class gets Autotest::YourStyle
         output = [at.results].flatten.join("\n")
-
-        if has_no_error? output
-          notify_ok filter_passmsg(output)
+        
+        if has_passed? output
+          notify_ok summarize(:pass, output)
         else
-          notify_error filter_failmsg(output)
+          notify_error summarize(:fail, output)
         end
       end
     end
